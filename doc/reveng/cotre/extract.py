@@ -4,17 +4,7 @@ import pyshark
 import struct
 import sys
 import binascii
-
-def hexDump(s):
-  h = " ".join(map("{:02x}".format, s))
-  t = ""
-  for i in range(len(s)):
-    c = s[i]
-    if c>=0x20 and c<0x7f:
-      t += chr(c)
-    else:
-      t += "."
-  return( h + " | " + t)
+from packet import Stream, Packet, hexDump
 
 def isFromHost(p):
     return ("host" == p.usb.src) 
@@ -31,13 +21,45 @@ def getData(p):
   return binascii.a2b_hex(p["USB.CAPDATA_RAW"].value)
 
 
-cap = pyshark.FileCapture(sys.argv[1], include_raw=True, use_json=True)
-nextaddr = 0
-for p in cap:
-  if isDataPacket(p):
-    dump = hexDump(getData(p))
-    if isFromHost(p):
-      print("> " + dump)
-    else:
-      print("< " + dump)
+
+if len(sys.argv) < 3:
+  print("""USAGE: extract.py WHAT PCAPFILE
+  
+  WHAT: What to extract 
+    - 'raw' dumps raw data streams.
+    - 'packets' dumps packet structure.
+
+  PCAPFILE: The pcap file (compressed or not). """)
+  sys.exit(-1)
+
+
+cap = pyshark.FileCapture(sys.argv[2], include_raw=True, use_json=True)
+what = sys.argv[1]
+
+
+if "raw" == what:
+  for p in cap:
+    if isDataPacket(p):
+      if isFromHost(p):
+        print("> " + hexDump(getData(p)))
+      else: 
+        print("< " + hexDump(getData(p)))
+
+
+elif "packet" == what:
+  in_str  = Stream()
+  out_str = Stream()
+
+  for p in cap:
+    if isDataPacket(p):
+      if isFromHost(p):
+        out_str.appendData(getData(p))
+        while out_str.hasPacket():
+          pkt = out_str.popPacket();
+          print(pkt.dump("> "))
+      else:
+        in_str.appendData(getData(p))
+        while in_str.hasPacket():
+          pkt = in_str.popPacket();
+          print(pkt.dump("< "))
         
