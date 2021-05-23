@@ -47,5 +47,31 @@ I have absolutely no clue. Unlucky numbers?!? They do not match the start sequen
 The Layer 0 does not contain any commands or type-fields that allow for different operations like *read*, *write* , *enter program mode*, *reboot* etc. Consequently these commands must be 
 implemented as another layer within the payload of the packets. The majority of payload lengths are very short. Like 6 or 7 bytes, consequently there is only little room for a proper state-less protocol. E.g., commands like *read n bytes from address x*. Moreover, there are a large number of packets being exchanged before the actual codeplug read and write operations start. I therefore fear that the underlying protocol for reading and writing the codeplug is stateful. 
 
+### Read request/response
+
+#### Read request, fixed length 7 bytes
+```
+    0                               8                               16                              24
+   +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+0  | Fixed to 0xff                 | Opcode 0x02                   | Address, 32bit little-endian                               ...
+   +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+4   ...                                                            | Sequence number               |
+   +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+```
+For read requests, the first two bytes are fixed to `0xff` and `0x02`, where the former is fixed for all requests and responses while the second appears to be the packet type. The Address is likely given as a 32bit integer in little-endian. The last byte appears to be a sequence number, when reading a *larger* block of data. That is, more than 4 bytes at once.
+
+
+#### Read response
+```
+    0                               8                               16                              24
+   +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+0  | Fixed to 0xff                 | Sequence number               | Data                                                       ...
+   +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+4   ...                                                            |
+   +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+```
+The response consists of the fixed byte `0xff` (common for all packets) followed by a sequence number. After the sequence number, the actual data follows.
+
+
 ## Scripts
 The `extract.py` script will extract and partially interpret the requests and responses from the host/device captured using wireshark. The `extract.py` file contains the script, while the `packet.py` file implements the protocol and packet format.

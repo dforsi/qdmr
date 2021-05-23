@@ -97,7 +97,8 @@ class Packet:
     # Handle 'normal' packets
     if (len(data)>=4) and (0xad == data[0]):
       preamble, length = struct.unpack(">BH", data[:3])
-      return Packet(Packet.TYPE_PACKET, payload=Payload(data[3:(3+length)]), chk=data[3+length])
+      pl = data[3:(3+length)]
+      return Packet(Packet.TYPE_PACKET, payload=Payload(pl), chk=data[3+length])
 
 
 class Payload:
@@ -116,10 +117,20 @@ class Payload:
 
 class Stream:
   def __init__(self):
+    self._last = None
     self._buffer = bytearray()
 
   def appendData(self, data:bytes):
-    self._buffer.extend(bytearray(data))
+    buf = bytearray(data)
+    while len(buf):
+      if (0x5c == self._last) and len(buf):
+        self._buffer.append(0x5c ^ buf[0] ^ 0xa3)
+        self._last = None 
+      elif 0x5c == buf[0]:
+        self._last = buf[0]
+      else: 
+        self._buffer.append(buf[0])
+      buf = buf[1:]
   
   def hasPacket(self) -> bool:
     # handle garbage
@@ -134,7 +145,7 @@ class Stream:
     if len(self._buffer)<4:
       return False
     preamble, length = struct.unpack(">BH", self._buffer[:3])
-    return (0xad == self._buffer[0]) and len(self._buffer) >= (4+length)
+    return (0xad == self._buffer[0]) and (len(self._buffer) >= (4+length))
 
   def popPacket(self):
     if not self.hasPacket():
