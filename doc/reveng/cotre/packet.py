@@ -109,7 +109,7 @@ class Payload:
     return len(self._data)
 
   def dump(self, prefix="") -> str:
-    return "{0}Payload: len={1}\n{0} | {2}".format(prefix, len(self._data), hexDump(self._data))
+    return "{0}Payload: len={1}\n{2}".format(prefix, len(self._data), hexDump(self._data, prefix+" | "))
 
   def pack(self) -> bytes:
     return self._data
