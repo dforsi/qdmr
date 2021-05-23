@@ -1,9 +1,9 @@
-# Cotre DMR radio
-This is likely the cheapest DMR radio out there for about $45. 
+# Cotre CO01D DMR radio
+This is likely the cheapest DMR radio out there for about $20-$45. 
 
 The protocol appears to be a weird one: It is actually a stream of requests and responses that do not alternate. That is, the CPS bombards the radio with requests and the radio responses to it some time later. Consequently, it is harder to correlate a response to its request. Although such a protocol is common in networks (e.g., TCP) it is rather uncommon for USB devices as there is virtually no latency between request and response and thus, the bandwidth is not limited by the latency. Is this what happens when a network engineer writes embedded code?
 
-## Packet format
+## Packet format (Layer 0)
 Requests and responses appear to share the same packet format. Please note, that due to the nature of the chosen transport, a packet may be split over two USB transfer packets. 
 
 ```
@@ -28,18 +28,24 @@ The would then decode into
   * Payload `ff 04 03 00 00 00 01`
   * CRC `f9` = `ff ^ 04 ^ 03 ^ 01`
 
-### Buggy CPS?!?
-Sometimes, a request is send by the CPS that does not follow the format above. For example during read, I observed the following two consecutive requests
-```
-ad 00 07 ff 02 58 71 00 82 02 54
-ad 00 07 ff 02 5c a3 71 00 82 03 51
-```
-The second appears to be one byte too long (both should have 7b payload). Also the checksum does not match. If, however, we ignore the `a3` byte in the middle, we obtain
-```
-ad 00 07 ff 02 58 71 00 82 02 54
-ad 00 07 ff 02 5c 71 00 82 03 51
-```
-This appears to be a more reasonable request following the first one (i.e., identical request except for the last payload byte). More over, the checksums now match. So, it appears that the CPS is buggy assembling invalid requests. This reverse engineering will be fun!
 
-## Extraction scripts
+### Weird escaping during transfer for bytes 0x11 and 0x13
+After some guesswork, I was able to figure that one out. It appears as if the bytes 0x11 and 0x13 are being replaced by an escape sequence using 0x5c as an escape byte. The decoding can be applied by the formula
+```
+ 5c XX = (0x5c xor XX xor a3)
+```
+Thus `5c xor a3 xor a3 = 5c`, `5c xor ee xor a3 = 11` and `5c xor ec xor a3 = 13`. 
+
+#### Why `5c` as escape char? 
+Because it is the ASCII value of `\`.
+
+#### Why escaping `11` and `13`?
+I have absolutely no clue. Unlucky numbers?!? They do not match the start sequence of the packets. Avoiding the start sequence byte is usually the reason to escape bytes in a stream. 
+
+
+## Requests and Responses (Layer 1)
+The Layer 0 does not contain any commands or type-fields that allow for different operations like *read*, *write* , *enter program mode*, *reboot* etc. Consequently these commands must be 
+implemented as another layer within the payload of the packets. The majority of payload lengths are very short. Like 6 or 7 bytes, consequently there is only little room for a proper state-less protocol. E.g., commands like *read n bytes from address x*. Moreover, there are a large number of packets being exchanged before the actual codeplug read and write operations start. I therefore fear that the underlying protocol for reading and writing the codeplug is stateful. 
+
+## Scripts
 The `extract.py` script will extract and partially interpret the requests and responses from the host/device captured using wireshark. The `extract.py` file contains the script, while the `packet.py` file implements the protocol and packet format.
