@@ -1,5 +1,5 @@
 # Cotre CO01D DMR radio
-This is likely the cheapest DMR radio out there for about $20-$45. 
+This is likely the cheapest DMR radio out there for about $20-$45. Although being marketed like an ISM radio, it is none. You need a license to operate this radio and there are some hefty fines awaiting you, if you don't have one. Moreover, it is generally not a good idea to mess with HAM radio operators. We turned triangulating transmitters into a (https://en.wikipedia.org/wiki/Amateur_radio_direction_finding)[sport].
 
 The protocol appears to be a weird one: It is actually a stream of requests and responses that do not alternate. That is, the CPS bombards the radio with requests and the radio responses to it some time later. Consequently, it is harder to correlate a response to its request. Although such a protocol is common in networks (e.g., TCP) it is rather uncommon for USB devices as there is virtually no latency between request and response and thus, the bandwidth is not limited by the latency. Is this what happens when a network engineer writes embedded code?
 
@@ -116,6 +116,8 @@ This request is never responded by the device.
 #### Response
 The radio does not respond to write requests directly with a packet but rather sends a XOff XOn control byte sequence, that is `13 11`. As these two bytes are always observed within a single USB frame, I assume that the radio does not perform flow control with these chars but rather uses them to signal an write ACK.
 
+
+
 ## Command sequences
 
 ### Common init sequence
@@ -131,7 +133,7 @@ Then, a sequence of command and write requests are send to the device. That is,
   * The CPS sends a write request to `8200ad04` (the address we just obtained) with the content `aa 06 0a 06 0a bb 00 00` which is ACKed using the XOff XOn chars. 
   * Then the CPS sends another `84` command `ff 84 05 00 00 00 a5`. 
 
-This sequence is send 20 times. Nothing changes in these 20 rounds. The same address, same content send response from the radio.
+This sequence is send 20 times. Nothing changes in these 20 rounds. The same address, same content send and same response from the radio.
 
 Then, two memory addresses are read. That is,
   * first `81c00268` is read and the radio returns `8201974c`. 
