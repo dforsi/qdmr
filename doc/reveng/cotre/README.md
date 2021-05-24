@@ -4,14 +4,11 @@ This is likely the cheapest DMR radio out there for about $20-$45. Although bein
 The protocol appears to be a weird one: It is actually a stream of requests and responses that do not alternate. That is, the CPS bombards the radio with requests and the radio responses to it some time later. Consequently, it is harder to correlate a response to its request. Although such a protocol is common in networks (e.g., TCP) it is rather uncommon for USB devices as there is virtually no latency between request and response and thus, the bandwidth is not limited by the latency. Is this what happens when a network engineer writes embedded code?
 
 ## XOff/XOn flow control and escaping
-It appears as if the radio uses an XOff/XOn *software* flow control. The bytes 0x11 (XOn) and 0x13 (XOff) signal the CPS to start and stop transmission of data. Consequently, these bytes must be replaced by an escape sequence using 0x5c as an escape byte in the normal data flow. The decoding can be applied by the formula
+It appears as if the radio uses an XOff/XOn *software* flow control. The bytes `11` (XOn) and `13` (XOff) signal the CPS to start and stop transmission of data. Consequently, these bytes must be replaced by an escape sequence using `5c` (ASCII value of `\`) as an escape byte in the normal data flow. The decoding can be applied by the formula
 ```
  5c XX = (0x5c xor XX xor a3)
 ```
 Thus `5c xor a3 xor a3 = 5c`, `5c xor ee xor a3 = 11` and `5c xor ec xor a3 = 13`. These control bytes (XOn/XOff) are only be observed after write requests. Moreover, these bytes are only send within a single USB frame. I've also seen the CPS bombarding the radio with write requests and ignoring the flow control completely. Consequently, I believe that the radio does not actually use these bytes for flow control but rather as an ACK when writing data to the radio. See *write request* below.
-
-### Why `5c` as escape char? 
-Because it is the ASCII value of `\`.
 
 
 ## Packet format (Layer 0)
@@ -29,11 +26,11 @@ Requests and responses appear to share the same packet format. Please note, that
 The checksum is a simple XOR of all payload bytes.
 
 ### Example
-The very first request send to the device when reading is 
+The very first request send to the device is 
 ```
  ad 00 07 ff 04 03 00 00 00 01 f9
 ```
-The would then decode into 
+This would then decode into 
   * Preamble `ad` 
   * Length `0007`
   * Payload `ff 04 03 00 00 00 01`
@@ -41,15 +38,15 @@ The would then decode into
 
 
 ## Requests and Responses (Layer 1)
-The Layer 0 does not contain any commands or type-fields that allow for different operations like *read*, *write* , *enter program mode*, *reboot* etc. Consequently these commands must be 
-implemented as another layer within the payload of the packets. The majority of payload lengths are very short. Like 6 or 7 bytes, consequently there is only little room for a proper state-less protocol. E.g., commands like *read n bytes from address x*. Moreover, there are a large number of packets being exchanged before the actual codeplug read and write operations start. I therefore fear that the underlying protocol for reading and writing the codeplug is stateful. This makes the reverse engineering of the protocol much harder as the meaning of specific bytes in a packet may change from state to state.  
+The Layer 0 does not contain any commands or type-fields that allow for different operations like *read*, *write* , *enter program mode*, *reboot* etc. Consequently, these commands must be 
+implemented in another layer within the payload of these packets. The majority of payload lengths is very short. Like 6 or 7 bytes. Consequently, there is only little room for a proper state-less protocol. I.e., commands like *read n bytes from address x*. Moreover, there are a large number of packets being exchanged before the actual codeplug read and write operations start. I therefore fear, that the underlying protocol for reading and writing the codeplug is stateful. This makes the reverse engineering of the protocol much harder as the meaning of specific bytes in a packet may change from state to state.  
 
-### Read request
-These packets are not only used to read the codeplug from the device but also to read additional information from memory. For example, one of the very first read requests will read the memory address of the codeplug itself from the device. 
+### Read request (opcode 02)
+These packets are not only used to read the codeplug from the device but also to read additional information from memory. For example, one of the very first read requests will read a memory address from the device. 
 
-Each read request only reads 4 bytes of data. Given the 6 bytes overhead from the request and 4bytes overhead from the packet, the efficiency is < 30%.
+Each read request reads only 4 bytes of data. Given the 6 bytes overhead from the request and 4 bytes overhead from the packet, the efficiency is < 30%. That is, 2/3 of transferred data is overhead.
 
-The protocol implements a stream-like behavior. That is, the CPS will send several requests to the radio without waiting for a response from the radio for each request. To dispatch the stream of responses received back from the device, a sequence number is used.
+The protocol implements a stream-like behavior. The CPS will send several requests to the radio without waiting for a response from the radio for each request. To dispatch the stream of responses received back from the device, a sequence number is used.
 
 #### Read request
 ```
@@ -60,7 +57,7 @@ The protocol implements a stream-like behavior. That is, the CPS will send sever
 4   ...                                                            | Sequence number               |
    +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
 ```
-For read requests, the first two bytes are fixed to `0xff` and `0x02`, where the former is fixed for all requests and responses while the second appears to be the packet type. The Address is likely given as a 32bit integer in little-endian. The last byte appears to be a sequence number, when reading a *larger* block of data. That is, more than 4 bytes at once.
+For read requests, the first two bytes are fixed to `0xff` and `0x02`, where the former is fixed for all requests and responses while the second appears to be the request type or opcode. The address to read from is given as a 32bit integer in little-endian. The last byte appears to be a sequence number, when reading a *larger* block of data. That is, more than 4 bytes at once. The sequence number appears to be in the range [1,128], I've never observed sequence number 0 or any number larger than 128. When the sequence number reaches 128, it wraps around to 1.
 
 #### Read response
 ```
@@ -71,37 +68,50 @@ For read requests, the first two bytes are fixed to `0xff` and `0x02`, where the
 4   ...                                                            |
    +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
 ```
-The response consists of the fixed byte `0xff` (common for all packets) followed by a sequence number. After the sequence number, the actual data follows.
+The response consists of the fixed byte `0xff` (common for all packets) followed by the sequence number of the request. After the sequence number, the actual data follows. The response data length appears to be fixed to 4 bytes.
 
 
-### Unknown request 0x04 
+### Program mode request (opcode 04)
 #### Request 
-This request is send at the very beginning before reading and writing the codeplug. The request is send twice and responded only once by the radio.
+This request is send at the very beginning before reading and writing the codeplug. The request is send several times (observed 2) and responded only once by the radio.
 ```
  ff 04 03 00 00 00 01
 ```
-As this request is the very first one send to the device, it can be assumed to put the radio into programming mode.
-
+As this request is the very first one send to the device, it is likely a command to put the radio into programming mode.
 
 #### Response 
+The response payload is simply
 ```
  ff 01 80
 ```
 
 
-### Unknown request 0x84
+### Command requests (opcode 84)
+These requests only appear in conjecture with write requests to some *special* memory or at the very beginning of the communication with the radio. There is no response from the radio to any of these command requests.
 #### Request 
+The command `ff 84 03 00 00 00 80` is send 20 times before any other command is send to the radio. As the radio uses its serial interface for debugging too, this might disable this feature, as it may interfere with the codeplug read or write. 
+
+The command `ff 84 05 00 00 00 00` is send before any write request to the *special* memory location `8200ad04` and the command `ff 84 05 00 00 00 a5` is send immediately thereafter.
+
+From this, we might interpret the command request structure as
 ```
- ff 84 03 00 00 00 80
- ff 84 05 00 00 00 00
- ff 84 05 00 00 00 a5
+    0                               8                               16                              24
+   +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+0  | Fixed to 0xff                 | Opcode 0x84                   | Command                       | Set to 0                      |
+   +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+4  | Set to 0                      | Set to 0                      | Argument                      |
+   +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
 ```
+The first two bytes are fixed to `ff` and `84` followed by the command byte. The next 3 bytes are fixed to 0 while the last byte may carry an argument to the command. Due to the limited use of these command requests, it is not clear whether this structure is valid or not. 
+
 #### Response
 This request is never responded by the device.
 
 
-### Write request 0x83
-#### Request (variable length)
+### Write request (opcode 83)
+Write requests are used twofold. They are used to write the actual codeplug to the device but also to write some cryptic data into *special* memory locations.
+
+#### Request 
 ```
     0                               8                               16                              24
    +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
@@ -112,20 +122,21 @@ This request is never responded by the device.
     ...                                                                                                                            |
    +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
  ```
+As usual, the first two bytes are fixed to `ff` and `83` followed by the address to write to. The remaining data of the request is the data to write. The length of the data is variable and request with up to 128 bytes has been observed. The packet format, however, allows for larger payloads.
 
 #### Response
-The radio does not respond to write requests directly with a packet but rather sends a XOff XOn control byte sequence, that is `13 11`. As these two bytes are always observed within a single USB frame, I assume that the radio does not perform flow control with these chars but rather uses them to signal an write ACK.
+The radio does not respond to write requests directly with a packet but rather sends a XOff+XOn control byte sequence, that is `13 11`. As these two bytes are always observed within a single USB frame, I assume that the radio does not perform flow control with these chars but rather uses them to signal an write ACK.
 
 
-
-## Command sequences
+## Request sequences
+There are a lot of request sequences send before the actual codeplug read and write begins. Many of these requests appear to prepare the radio and obtain some memory addresses.
 
 ### Common init sequence
-The first command send is the `04` one. That is the CPS sends several (I've seen 2) `ff 04 03 00 00 00 01` commands to the radio until it responds with `ff 01 80`.
+The first request send is the `04` one. That is, the CPS sends several (I've seen 2) `ff 04 03 00 00 00 01` requests to the radio until it responds with `ff 01 80`.
 
-Then, the CPS bombards the radio with `ff 84 03 00 00 00 80` requests. That is, I've seen 20 requests send to the radio. Please note that the radio never responds to these requests. So I believe that this request is send 20 time all the time. The meaning of this request is still unknown.
+Then, the CPS bombards the radio with `ff 84 03 00 00 00 80` commands. That is, I've seen 20 requests send to the radio. Please note that the radio never responds to these requests. So I believe that this request is send 20 time all the time. The meaning of this request is still unknown, but likely prepares the radio for communication. 
 
-Then the radio send several (I've seen 3) read requests from address `81c00270`. It is likely, that the read request is send until a response from the device is received. The radio responds with a memory address. I've seen `8200ad04` and I guess that this address is fixed for this radio and at least firmware version.
+Then the CPS send several (I've seen 3) read requests from address `81c00270`. It is likely, that the read request is send until a response from the device is received. The radio responds with a memory address. I've seen `8200ad04` and I guess that this address is fixed for this radio and at least firmware version. This address is like some sort of memory location to control the internal state of the radio. In what follows, there are a lot of write requests to this memory location.
 
 Then, a sequence of command and write requests are send to the device. That is, 
 
@@ -178,6 +189,22 @@ The CPS continues with reading 772bytes of the from address `82006584`. This mat
 The actual codeplug write starts with a write request to address `82006d54` (another address we received before) writing 128 bytes at once. These write requests are not encapsulated in `84` commands.
 
 After the codeplug has been written to the device, another write sequence to address `8200ad04` with the content `aa 06 0a 02 0e bb 00 00` is performed, includeing the `84` commands. This likely triggers a reboot.
+
+
+## Some *special* addresses
+There are some special addresses being read from and written to during the codeplug read and write. Some of these addresses are pointers, other likely contain status and control registers. Addresses read from the device are marked in *italic*. These addresses may change between devices or firmware revisions and should not be assumed static.
+
+| Address    | RW | Size | Content                                                       |
+| ---------- | -- | ---- | ------------------------------------------------------------- |
+| 81c00268   | R  | 4    | Content table address. E.g., *8201974c*.                      |
+| 81c0026c   | R  | 4    | Status register address. E.g., *8200ac2c*.                    |
+| 81c00270   | R  | 4    | Control register address. E.g., *8200ad04*.                   |
+| *82006584* | R  | 772  | Some additional radio info.                                   |
+| *82006d54* | RW | ???  | Codeplug content address.                                     |
+| *8200ac2c* | R  | 8    | Likely some sort of status register of the firmware.          |
+| *8200ad04* | W  | 10   | Likely the *control register* for the firmware.               |
+| *8201974c* | R  | 12   | Info addr *82006584* & length 772, codeplug addr *82006d54*.  |
+
 
 ## Scripts
 The `extract.py` script will extract and partially interpret the requests and responses from the host/device captured using wireshark. The `extract.py` file contains the script, while the `packet.py` file implements the protocol and packet format.
