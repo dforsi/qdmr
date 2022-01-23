@@ -10,6 +10,7 @@
 #include "d878uv.hh"
 #include "d878uv2.hh"
 #include "d578uv.hh"
+#include "d578uv2.hh"
 #include "dm1701.hh"
 
 
@@ -47,7 +48,8 @@ RadioInfo::_radiosById = QHash<unsigned, RadioInfo>{
   {RadioInfo::D868UVE,  D868UV::defaultRadioInfo()},
   {RadioInfo::D878UV,   D878UV::defaultRadioInfo()},
   {RadioInfo::D878UVII, D878UV2::defaultRadioInfo()},
-  {RadioInfo::D578UV,   D578UV::defaultRadioInfo()}
+  {RadioInfo::D578UV,   D578UV::defaultRadioInfo()},
+  {RadioInfo::D578UV2,  D578UV2::defaultRadioInfo()}
 };
 
 

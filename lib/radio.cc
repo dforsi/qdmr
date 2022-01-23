@@ -15,6 +15,7 @@
 #include "d878uv.hh"
 #include "d878uv2.hh"
 #include "d578uv.hh"
+#include "d578uv2.hh"
 
 #include "config.hh"
 #include "logger.hh"
@@ -400,6 +401,8 @@ Radio::detect(const USBDeviceDescriptor &descr, const RadioInfo &force, const Er
         return new D878UV2(anytone);
       } else if ((id.isValid() && (RadioInfo::D578UV == id.id())) || (force.isValid() && (RadioInfo::D578UV == force.id()))) {
         return new D578UV(anytone);
+      } else if ((id.isValid() && (RadioInfo::D578UV2 == id.id())) || (force.isValid() && (RadioInfo::D578UV2 == force.id()))) {
+        return new D578UV2(anytone);
       }
       anytone->close();
       anytone->deleteLater();

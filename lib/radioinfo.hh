@@ -34,6 +34,7 @@ public:
     D878UV,
     D878UVII,
     D578UV,
+    D578UV2,
     // Baofeng/BTECH
     DM1701, RT84 = DM1701
   };

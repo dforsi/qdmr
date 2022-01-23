@@ -151,6 +151,8 @@ AnytoneInterface::identifier(const ErrorStack &err) {
     return RadioInfo::byID(RadioInfo::D878UVII);
   } else if ("D578UV" == _info.name) {
     return RadioInfo::byID(RadioInfo::D578UV);
+  } else if ("D578UV2" == _info.name) {
+    return RadioInfo::byID(RadioInfo::D578UV2);
   }
 
   errMsg(err) << "Unsupported AnyTone radio '" << _info.name << "'.";
