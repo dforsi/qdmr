@@ -5,6 +5,17 @@ lists the differences. The D578UV codeplug documentation can be found under
 
 https://dm3mat.darc.de/qdmr/libdmrconf/classD578UVCodeplug.html
 
+The table there lists only the memory layout. That is, which memory regions are accessed and what 
+is stored there. The encoding of each codeplug element (e.g., channel etc) is then documented it 
+the corresponding class. For example, the Channel element for the D578UV is documented in
+
+https://dm3mat.darc.de/qdmr/libdmrconf/classD578UVCodeplug_1_1ChannelElement.html
+
+
+## Collaboration
+The easiest way for me would be if you fork the project at github and work on the d578uv2 branch. 
+Then just send pull-requests. 
+
 ## Setup
 Setup a windows machine (I use VirtualBox for it and use a shared directory to inspect the dumped 
 codeplugs under the host Linux) running the CPS, COM0COM driver (virtual null-modem, 
