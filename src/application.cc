@@ -50,6 +50,12 @@ Application::Application(int &argc, char *argv[])
   QString logdir = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
   Logger::get().addHandler(new FileLogHandler(logdir+"/qdmr.log"));
 
+  // Register icon themes
+  QStringList iconPaths = QIcon::themeSearchPaths();
+  iconPaths.prepend(":/icons");
+  QIcon::setThemeSearchPaths(iconPaths);
+  onPaletteChanged(palette());
+
   Settings settings;
   _repeater   = new RepeaterDatabase(settings.position(), 7, this);
   _users      = new UserDatabase(30, this);
@@ -103,6 +109,18 @@ Application::~Application() {
   _mainWindow = nullptr;
 }
 
+bool
+Application::isDarkMode() const {
+  return isDarkMode(palette());
+}
+
+bool
+Application::isDarkMode(const QPalette &palette) const {
+  int text_hsv_value = palette.color(QPalette::WindowText).value(),
+      bg_hsv_value = palette.color(QPalette::Background).value();
+  return text_hsv_value > bg_hsv_value;
+}
+
 
 QMainWindow *
 Application::mainWindow() {
@@ -134,6 +152,7 @@ Application::createMainWindow() {
     return _mainWindow;
 
   Settings settings;
+  logDebug() << "Create main window using icon theme '" << QIcon::themeName() << "'.";
 
   QUiLoader loader;
   QFile uiFile("://ui/mainwindow.ui");
@@ -191,9 +210,12 @@ Application::createMainWindow() {
   tabs->addTab(_generalSettings, tr("Settings"));
   if (settings.showCommercialFeatures()) {
     _generalSettings->hideDMRID(true);
-    _generalSettings->hideExtensions(false);
   } else {
     _generalSettings->hideDMRID(false);
+  }
+  if (settings.showExtensions()) {
+    _generalSettings->hideExtensions(false);
+  } else {
     _generalSettings->hideExtensions(true);
   }
 
@@ -237,6 +259,8 @@ Application::createMainWindow() {
   if (! settings.showCommercialFeatures()) {
     tabs->removeTab(tabs->indexOf(_radioIdTab));
     _radioIdTab->setHidden(true);
+  }
+  if (! settings.showExtensions()) {
     tabs->removeTab(tabs->indexOf(_extensionView));
     _extensionView->setHidden(true);
   }
@@ -696,22 +720,26 @@ Application::showSettings() {
         tabs->insertTab(tabs->indexOf(_generalSettings)+1, _radioIdTab, tr("Radio IDs"));
         _mainWindow->update();
       }
-      if (-1 == tabs->indexOf(_extensionView)) {
-        tabs->insertTab(tabs->indexOf(_roamingZoneList)+1, _extensionView, tr("Extensions"));
-        _mainWindow->update();
-      }
       _generalSettings->hideDMRID(true);
-      _generalSettings->hideExtensions(false);
     } else if (! settings.showCommercialFeatures()) {
       if (-1 != tabs->indexOf(_radioIdTab)) {
         tabs->removeTab(tabs->indexOf(_radioIdTab));
         _mainWindow->update();
       }
+      _generalSettings->hideDMRID(false);
+    }
+    // Handle extensions
+    if (settings.showExtensions()) {
+      if (-1 == tabs->indexOf(_extensionView)) {
+        tabs->insertTab(tabs->indexOf(_roamingZoneList)+1, _extensionView, tr("Extensions"));
+        _mainWindow->update();
+      }
+      _generalSettings->hideExtensions(false);
+    } else {
       if (-1 != tabs->indexOf(_extensionView)) {
         tabs->removeTab(tabs->indexOf(_extensionView));
         _mainWindow->update();
       }
-      _generalSettings->hideDMRID(false);
       _generalSettings->hideExtensions(true);
     }
   }
@@ -783,5 +811,16 @@ Application::position() const {
   return _currentPosition;
 }
 
+void
+Application::onPaletteChanged(const QPalette &palette) {
+  // Set theme based on UI mode (light vs. dark).
+  if (isDarkMode(palette)) {
+    QIcon::setThemeName("dark");
+    logDebug() << "Set icon theme to 'dark'.";
+  } else {
+    QIcon::setThemeName("light");
+    logDebug() << "Set icon theme to 'light'.";
+  }
+}
 
 

@@ -3,6 +3,7 @@
 
 #include <QApplication>
 #include <QGroupBox>
+#include <QIcon>
 #include "config.hh"
 #include <QGeoPositionInfoSource>
 #include "releasenotes.hh"
@@ -42,6 +43,8 @@ public:
 
   Radio *autoDetect(const ErrorStack &err=ErrorStack());
 
+  bool isDarkMode() const;
+  bool isDarkMode(const QPalette &palette) const;
 public slots:
   void newCodeplug();
   void loadCodeplug();
@@ -72,6 +75,8 @@ private slots:
   void onConfigModifed();
 
   void positionUpdated(const QGeoPositionInfo &info);
+
+  void onPaletteChanged(const QPalette &palette);
 
 protected:
   Config *_config;
