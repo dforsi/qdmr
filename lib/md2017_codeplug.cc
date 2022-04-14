@@ -236,7 +236,7 @@ MD2017Codeplug::linkZones(Context &ctx, const ErrorStack &err) {
       return false;
     }
     ZoneExtElement zoneext(data(ADDR_ZONEEXTS + i*ZONEEXT_SIZE));
-    if (! zoneext.linkZoneObj(ctx.get<Zone>(i), ctx)) {
+    if (! zoneext.linkZoneObj(ctx.get<Zone>(i+1), ctx)) {
       errMsg(err) << "Cannot link zone extension at index " << i << ".";
       return false;
     }
@@ -428,15 +428,43 @@ MD2017Codeplug::decodeButtonSetttings(Config *config, const ErrorStack &err) {
   return ButtonSettingsElement(data(ADDR_BUTTONSETTINGS)).updateConfig(config);
 }
 
-void
-MD2017Codeplug::clearTextMessages() {
-  memset(data(ADDR_TEXTMESSAGES), 0, NUM_TEXTMESSAGES*TEXTMESSAGE_SIZE);
-}
 
 void
 MD2017Codeplug::clearPrivacyKeys() {
   EncryptionElement(data(ADDR_PRIVACY_KEYS)).clear();
+}
 
+bool
+MD2017Codeplug::encodePrivacyKeys(Config *config, const Flags &flags, Context &ctx, const ErrorStack &err) {
+  Q_UNUSED(flags); Q_UNUSED(err);
+  // First, reset keys
+  clearPrivacyKeys();
+  // Get keys
+  EncryptionElement keys(data(ADDR_PRIVACY_KEYS));
+  // If there is no encryption extension -> done.
+  if (! config->commercialExtension())
+    return true;
+  // Otherwise encode
+  return keys.fromCommercialExt(config->commercialExtension(), ctx);
+}
+
+bool
+MD2017Codeplug::decodePrivacyKeys(Config *config, Context &ctx, const ErrorStack &err) {
+  Q_UNUSED(config)
+  // Get keys
+  EncryptionElement keys(data(ADDR_PRIVACY_KEYS));
+  // Decode element
+  if(! keys.updateCommercialExt(ctx)) {
+    errMsg(err) << "Cannot create encryption keys.";
+    return false;
+  }
+  return true;
+}
+
+
+void
+MD2017Codeplug::clearTextMessages() {
+  memset(data(ADDR_TEXTMESSAGES), 0, NUM_TEXTMESSAGES*TEXTMESSAGE_SIZE);
 }
 
 void

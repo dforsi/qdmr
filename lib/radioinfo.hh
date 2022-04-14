@@ -9,10 +9,9 @@
 
 /** Provides some information about a radio model.
  *
- * This class is used to unify radio enumeration and detection. It also will contains the detailed
- * features of the radio as used by the @c Radio::verify method.
+ * This class is used to unify radio enumeration and detection.
  *
- * @since 0.9.0 This class will replace the Radio::Features class in future. */
+ * @since 0.9.0 */
 class RadioInfo
 {
 public:
@@ -34,7 +33,7 @@ public:
     D878UV,
     D878UVII,
     D578UV,
-    D578UV2,
+    D578UVII,
     // Baofeng/BTECH
     DM1701, RT84 = DM1701
   };

@@ -29,7 +29,7 @@ Channel::Channel(QObject *parent)
   : ConfigObject("ch", parent), _rxFreq(0), _txFreq(0), _defaultPower(true),
     _power(Power::Low), _txTimeOut(std::numeric_limits<unsigned>::max()), _rxOnly(false),
     _vox(std::numeric_limits<unsigned>::max()), _scanlist(), _openGD77ChannelExtension(nullptr),
-    _tytChannelExtension(nullptr)
+    _tytChannelExtension(nullptr), _commercialExtension(nullptr)
 {
   // Link scan list modification event (e.g., scan list gets deleted).
   connect(&_scanlist, SIGNAL(modified()), this, SLOT(onReferenceModified()));
@@ -37,7 +37,7 @@ Channel::Channel(QObject *parent)
 
 Channel::Channel(const Channel &other, QObject *parent)
   : ConfigObject("ch", parent), _scanlist(), _openGD77ChannelExtension(nullptr),
-    _tytChannelExtension(nullptr)
+    _tytChannelExtension(nullptr), _commercialExtension(nullptr)
 {
   copy(other);
 
@@ -76,6 +76,9 @@ Channel::clear() {
   if (_tytChannelExtension)
     _tytChannelExtension->deleteLater();
   _tytChannelExtension = nullptr;
+  if (_commercialExtension)
+    _commercialExtension->deleteLater();
+  _commercialExtension = nullptr;
 }
 
 double
@@ -184,29 +187,21 @@ Channel::disableVOX() {
 }
 
 const ScanListReference *
-Channel::scanList() const {
+Channel::scanListRef() const {
   return &_scanlist;
 }
 
 ScanListReference *
-Channel::scanList() {
+Channel::scanListRef() {
   return &_scanlist;
 }
 
-void
-Channel::setScanList(ScanListReference *ref) {
-  if (nullptr == ref)
-    _scanlist.clear();
-  else
-    _scanlist.copy(ref);
-}
-
 ScanList *
-Channel::scanListObj() const {
+Channel::scanList() const {
   return _scanlist.as<ScanList>();
 }
 bool
-Channel::setScanListObj(ScanList *list) {
+Channel::setScanList(ScanList *list) {
   return _scanlist.set(list);
 }
 
@@ -249,9 +244,26 @@ Channel::setTyTChannelExtension(TyTChannelExtension *ext) {
   }
 }
 
+CommercialChannelExtension *
+Channel::commercialExtension() const {
+  return _commercialExtension;
+}
+void
+Channel::setCommercialExtension(CommercialChannelExtension *ext) {
+  if (_commercialExtension == ext)
+    return;
+  if (_commercialExtension)
+    _commercialExtension->deleteLater();
+  _commercialExtension = ext;
+  if (_commercialExtension) {
+    _commercialExtension->setParent(this);
+    connect(_commercialExtension, SIGNAL(modified(ConfigItem*)), this, SLOT(onReferenceModified()));
+  }
+}
+
 bool
-Channel::populate(YAML::Node &node, const Context &context) {
-  if (! ConfigObject::populate(node, context))
+Channel::populate(YAML::Node &node, const Context &context, const ErrorStack &err) {
+  if (! ConfigObject::populate(node, context, err))
     return false;
 
   if (defaultPower()) {
@@ -479,18 +491,19 @@ AnalogChannel::setAPRSSystem(APRSSystem *sys) {
 }
 
 YAML::Node
-AnalogChannel::serialize(const Context &context) {
-  YAML::Node node = Channel::serialize(context);
+AnalogChannel::serialize(const Context &context, const ErrorStack &err) {
+  YAML::Node node = Channel::serialize(context, err);
   if (node.IsNull())
     return node;
+
   YAML::Node type;
   type["analog"] = node;
   return type;
 }
 
 bool
-AnalogChannel::populate(YAML::Node &node, const Context &context) {
-  if (! Channel::populate(node, context))
+AnalogChannel::populate(YAML::Node &node, const Context &context, const ErrorStack &err) {
+  if (! Channel::populate(node, context, err))
     return false;
 
   if (Signaling::SIGNALING_NONE != _rxTone) {
@@ -822,10 +835,11 @@ DigitalChannel::setRadioIdObj(DMRRadioID *id) {
 }
 
 YAML::Node
-DigitalChannel::serialize(const Context &context) {
-  YAML::Node node = Channel::serialize(context);
+DigitalChannel::serialize(const Context &context, const ErrorStack &err) {
+  YAML::Node node = Channel::serialize(context, err);
   if (node.IsNull())
     return node;
+
   YAML::Node type;
   type["digital"] = node;
   return type;

@@ -9,6 +9,7 @@
 #include "signaling.hh"
 #include "tyt_extensions.hh"
 #include "opengd77_extension.hh"
+#include "commercial_extension.hh"
 
 class Config;
 class RXGroupList;
@@ -41,13 +42,15 @@ class Channel: public ConfigObject
   /** If true, the channel is receive only. */
   Q_PROPERTY(bool rxOnly READ rxOnly WRITE setRXOnly)
   /** The scan list. */
-  Q_PROPERTY(ScanListReference* scanList READ scanList WRITE setScanList)
+  Q_PROPERTY(ScanListReference* scanListRef READ scanListRef)
   /** The VOX setting. */
   Q_PROPERTY(unsigned vox READ vox WRITE setVOX SCRIPTABLE false)
   /** The OpenGD77 channel extension. */
   Q_PROPERTY(OpenGD77ChannelExtension* openGD77 READ openGD77ChannelExtension WRITE setOpenGD77ChannelExtension)
   /** The TyT channel extension. */
   Q_PROPERTY(TyTChannelExtension* tyt READ tytChannelExtension WRITE setTyTChannelExtension)
+  /** The commercial channel extension. */
+  Q_PROPERTY(CommercialChannelExtension* commercial READ commercialExtension WRITE setCommercialExtension)
 
 public:
   /** Possible power settings. */
@@ -121,15 +124,13 @@ public:
   void disableVOX();
 
   /** Returns the reference to the scan list. */
-  const ScanListReference *scanList() const;
+  const ScanListReference *scanListRef() const;
   /** Returns the reference to the scan list. */
-  ScanListReference *scanList();
-  /** Sets the scan list reference. */
-  void setScanList(ScanListReference *ref);
+  ScanListReference *scanListRef();
   /** Returns the default scan list for the channel. */
-  ScanList *scanListObj() const;
+  ScanList *scanList() const;
   /** (Re-) Sets the default scan list for the channel. */
-  bool setScanListObj(ScanList *list);
+  bool setScanList(ScanList *list);
 
   /** Returns the channel extension for the OpenGD77 firmware.
    * If this extension is not set, returns @c nullptr. */
@@ -143,12 +144,17 @@ public:
   /** Sets the TyT channel extension. */
   void setTyTChannelExtension(TyTChannelExtension *ext);
 
+  /** Retunrs the extension for commercial features. */
+  CommercialChannelExtension *commercialExtension() const;
+  /** Sets the commercial channel extension. */
+  void setCommercialExtension(CommercialChannelExtension *ext);
+
 public:
   bool parse(const YAML::Node &node, Context &ctx, const ErrorStack &err=ErrorStack());
   bool link(const YAML::Node &node, const Context &ctx, const ErrorStack &err=ErrorStack());
 
 protected:
-  bool populate(YAML::Node &node, const Context &context);
+  bool populate(YAML::Node &node, const Context &context, const ErrorStack &err=ErrorStack());
 
 protected slots:
   /** Gets called whenever a referenced object is changed or deleted. */
@@ -175,6 +181,8 @@ protected:
   OpenGD77ChannelExtension *_openGD77ChannelExtension;
   /** Owns the TyT channel extension object. */
   TyTChannelExtension *_tytChannelExtension;
+  /** Owns the commercial channel extension. */
+  CommercialChannelExtension *_commercialExtension;
 };
 
 
@@ -267,11 +275,11 @@ public:
   void setAPRSSystem(APRSSystem *sys);
 
 public:
-  YAML::Node serialize(const Context &context);
+  YAML::Node serialize(const Context &context, const ErrorStack &err=ErrorStack());
   bool parse(const YAML::Node &node, Context &ctx, const ErrorStack &err=ErrorStack());
 
 protected:
-  bool populate(YAML::Node &node, const Context &context);
+  bool populate(YAML::Node &node, const Context &context, const ErrorStack &err=ErrorStack());
 
 protected:
   /** Holds the admit criterion. */
@@ -412,7 +420,7 @@ public:
   bool setRadioIdObj(DMRRadioID *id);
 
 public:
-  YAML::Node serialize(const Context &context);
+  YAML::Node serialize(const Context &context, const ErrorStack &err=ErrorStack());
 
 protected:
   /** The admit criterion. */

@@ -1,5 +1,5 @@
-/** @defgroup d578uv2 Anytone AT-D578UV III
- * Device specific classes for Anytone AT-D578UV III.
+/** @defgroup d578uv2 Anytone AT-D578UV II
+ * Device specific classes for Anytone AT-D578UV II.
  *
  * \image html d578uv.jpg "AT-D578UV" width=200px
  * \image latex d578uv.jpg "AT-D578UV" width=200px
@@ -12,7 +12,7 @@
 #include "anytone_interface.hh"
 #include "d878uv2_callsigndb.hh"
 
-/** Implements an interface to Anytone AT-D578UV VHF/UHF 50W DMR (Tier I & II) radios.
+/** Implements an interface to Anytone AT-D578UV II VHF/UHF 50W DMR (Tier I & II) radios.
  *
  * @ingroup d578uv2 */
 class D578UV2: public AnytoneRadio
@@ -23,15 +23,15 @@ public:
   /** Do not construct this class directly, rather use @c Radio::detect. */
   explicit D578UV2(AnytoneInterface *device=nullptr, QObject *parent=nullptr);
 
-  const Radio::Features &features() const;
+  const RadioLimits &limits() const;
 
   /** Returns the default radio information. The actual instance may have different properties
    * due to variants of the same radio. */
   static RadioInfo defaultRadioInfo();
 
 protected:
-  /** Holds a copy of the specific radio features. */
-  Radio::Features _features;
+  /** Holds the limits for the radio. */
+  RadioLimits *_limits;
 };
 
 #endif // __D878UV_HH__

@@ -178,8 +178,10 @@ D878UVCodeplug::ChannelElement::setFrequencyCorrection(int corr) {
 Channel *
 D878UVCodeplug::ChannelElement::toChannelObj(Context &ctx) const {
   Channel *ch = AnytoneCodeplug::ChannelElement::toChannelObj(ctx);
+
   if (nullptr == ch)
     return nullptr;
+
   // Nothing else to do
   return ch;
 }
@@ -1366,6 +1368,14 @@ D878UVCodeplug::AnalogAPRSSettingsElement::clear() {
   setUInt8(0x0000, 0xff);
   setTXDelay(60);
   setUInt8(0x003d, 0x01); setUInt8(0x003e, 0x03); setUInt8(0x003f, 0xff);
+}
+
+bool
+D878UVCodeplug::AnalogAPRSSettingsElement::isValid() const {
+  if (! Codeplug::Element::isValid())
+    return false;
+  return (0 != frequency()) && (! destination().simplified().isEmpty())
+      && (! source().simplified().isEmpty());
 }
 
 unsigned
