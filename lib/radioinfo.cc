@@ -3,6 +3,7 @@
 #include "opengd77.hh"
 #include "gd77.hh"
 #include "rd5r.hh"
+#include "md380.hh"
 #include "md390.hh"
 #include "uv390.hh"
 #include "md2017.hh"
@@ -18,6 +19,7 @@ RadioInfo::_radiosByName = QHash<QString, RadioInfo::Radio>{
   {"opengd77", RadioInfo::OpenGD77},
   {"rd5r",     RadioInfo::RD5R},
   {"gd77",     RadioInfo::GD77},
+  {"md380",    RadioInfo::MD380},
   {"md390",    RadioInfo::MD390},
   {"uv380",    RadioInfo::UV380},
   {"rt8",      RadioInfo::RT8},
@@ -40,6 +42,7 @@ RadioInfo::_radiosById = QHash<unsigned, RadioInfo>{
   {RadioInfo::OpenGD77, OpenGD77::defaultRadioInfo()},
   {RadioInfo::RD5R,     RD5R::defaultRadioInfo()},
   {RadioInfo::GD77,     GD77::defaultRadioInfo()},
+  {RadioInfo::MD380,    MD380::defaultRadioInfo()},
   {RadioInfo::MD390,    MD390::defaultRadioInfo()},
   {RadioInfo::UV390,    UV390::defaultRadioInfo()},
   {RadioInfo::MD2017,   MD2017::defaultRadioInfo()},

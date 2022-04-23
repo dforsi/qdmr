@@ -6,6 +6,7 @@
 
 #include "rd5r.hh"
 #include "gd77.hh"
+#include "md380.hh"
 #include "md390.hh"
 #include "uv390.hh"
 #include "md2017.hh"
@@ -90,7 +91,9 @@ Radio::detect(const USBDeviceDescriptor &descr, const RadioInfo &force, const Er
     TyTInterface *dfu = new TyTInterface(descr, err);
     if (dfu->isOpen()) {
       RadioInfo id = dfu->identifier();
-      if ((id.isValid() && (RadioInfo::MD390 == id.id())) || (force.isValid() && (RadioInfo::MD390 == force.id()))) {
+      if ((id.isValid() && (RadioInfo::MD380 == id.id())) || (force.isValid() && (RadioInfo::MD380 == force.id()))) {
+        return new MD380(dfu);
+      } else if ((id.isValid() && (RadioInfo::MD390 == id.id())) || (force.isValid() && (RadioInfo::MD390 == force.id()))) {
         return new MD390(dfu);
       } else if ((id.isValid() && (RadioInfo::UV390 == id.id())) || (force.isValid() && (RadioInfo::UV390 == force.id()))) {
         return new UV390(dfu);
