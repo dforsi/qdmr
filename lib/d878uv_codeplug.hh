@@ -1357,12 +1357,12 @@ public:
     /** Sets the FM APRS channel width. */
     virtual void setFMChannelWidth(AnytoneFMAPRSSettingsExtension::Bandwidth width);
 
-    /** Retruns @c true if the CRC check on received FM APRS messages is disabled. */
+    /** Returns @c true if the CRC check on received FM APRS messages is disabled. */
     virtual bool fmPassAll() const;
     /** Enables/disables "pass all", that is the CRC check on FM APRS messages is disabled. */
     virtual void enableFMPassAll(bool enable);
 
-    /** Retruns @c true if the n-th of 8 FM APRS frequencies is set. */
+    /** Returns @c true if the n-th of 8 FM APRS frequencies is set. */
     virtual bool fmFrequencySet(unsigned int n) const;
     /** Returns the n-th of 8 FM APRS frequencies. */
     virtual Frequency fmFrequency(unsigned int n) const;

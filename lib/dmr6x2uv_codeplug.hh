@@ -1009,7 +1009,7 @@ public:
     /** Enables/disables roaming. */
     virtual void enableDMRRoaming(bool enable);
 
-    /** Returns the the repeater activation delay in ms. */
+    /** Returns the repeater activation delay in ms. */
     virtual Interval dmrPreWaveDelay() const;
     /** Sets the repeater activation delay in ms. */
     virtual void setDMRPreWaveDelay(Interval ms);

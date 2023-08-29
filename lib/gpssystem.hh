@@ -138,7 +138,7 @@ class APRSSystem: public PositioningSystem
   Q_PROPERTY(Icon icon READ icon WRITE setIcon)
   /** An optional text message. */
   Q_PROPERTY(QString message READ message WRITE setMessage)
-  /** Anytone sepecific settings. */
+  /** Anytone specific settings. */
   Q_PROPERTY(AnytoneFMAPRSSettingsExtension *anytone READ anytoneExtension WRITE setAnytoneExtension)
 
 public:
